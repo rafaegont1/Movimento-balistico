@@ -1,6 +1,7 @@
 import pygame
 import sys
 from math import sin, cos, pi
+import matplotlib.pyplot as plt
 
 # Largura e altura da janela
 width = 1024
@@ -57,6 +58,21 @@ font = pygame.font.Font(None, 24)
 posicao_x = 0
 posicao_y = height
 
+# Definir um evento personalizado
+CUSTOM_EVENT = pygame.USEREVENT + 1
+
+# Criar um evento que será disparado a cada 0.5 segundos
+pygame.time.set_timer(CUSTOM_EVENT, 500)
+
+# Matriz de velocidades horizontal, vertical e módulo
+tempo = list()
+velocidades_x = list()
+velocidades_y = list()
+velocidades = list()
+
+# Set the clock object to track time
+clock = pygame.time.Clock()
+
 # Cores
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -67,8 +83,14 @@ SKY = (135, 206, 235)  # Azul céu
 GRASS = (34, 139, 34)  # Verde grama
 SUN = (255, 255, 0)  # Amarelo sol
 
+# Altura máxima
+alt_max = 0.0
+
 # Lista para armazenar os pontos da trajetória
 trajetoria = [(int(posicao_x), int(posicao_y))]
+
+# Tempo inicial do programa
+start_time = pygame.time.get_ticks()
 
 # Loop principal
 while True:
@@ -78,24 +100,30 @@ while True:
     velocidade_y -= gravidade * dt
     posicao_y -= velocidade_y * dt
 
+    altura = height - posicao_y
+
+    if(altura > alt_max):
+        alt_max = altura
+
     # Adiciona a posição atual na lista de trajetória
     trajetoria.append((int(posicao_x), int(posicao_y)))
 
     # Verificar se o projétil atingiu o solo
     if posicao_y >= height:
-        pygame.quit()
-        print(f'Posição: ({posicao_x:.2f}, {height - posicao_y:.2f})')
-        print(f'Velocidade: ({velocidade_x:.2f}, {velocidade_y:.2f})')
-        sys.exit()
+        break
 
     # Preencha o fundo da janela com a cor do céu
     window.fill(SKY)
 
     # Desenhe o sol
-    pygame.draw.circle(window, SUN, (100, 125), 50)
+    pygame.draw.circle(window, SUN, (300, 125), 50)
 
     # Desenhe a grama
     pygame.draw.rect(window, GRASS, (0, height - 50, width, 50))
+
+    # Atualizar o tempo decorrido
+    current_time = pygame.time.get_ticks()
+    elapsed_time = (current_time - start_time) / 1000
 
     # Criar os objetos de texto para exibir a posição e a velocidade
     position_text = font.render(
@@ -106,10 +134,25 @@ while True:
         f'Velocidade: ({velocidade_x:.2f}, {velocidade_y:.2f}) m/s',
         True, BLACK
     )
+    time_text = font.render(
+        f'Tempo: {elapsed_time:.1f} s',
+        True, BLACK
+    )
+    posicao_x_text = font.render(
+        f'Distância horizontal: {posicao_x:.2f} m',
+        True, BLACK
+    )
+    alt_max_text = font.render(
+        f'Altura máxima: {alt_max:.2f} m',
+        True, BLACK
+    )
 
     # Exibir os textos na janela
     window.blit(position_text, (10, 10))
     window.blit(velocity_text, (10, 40))
+    window.blit(time_text, (10, 70))
+    window.blit(posicao_x_text, (10, 100))
+    window.blit(alt_max_text, (10, 130))
 
     # Desenho da trajetória
     pygame.draw.lines(window, PURPLE, False, trajetoria, 5)
@@ -117,5 +160,32 @@ while True:
     # Desenho do projétil
     pygame.draw.circle(window, BLACK, (int(posicao_x), int(posicao_y)), 10)
 
+    # Atualizar a lista
+    for event in pygame.event.get():
+        if event.type == CUSTOM_EVENT:
+            tempo.append(elapsed_time)
+            velocidades_x.append(velocidade_x)
+            velocidades_y.append(velocidade_y)
+            velocidades.append((velocidade_x**2 + velocidade_y**2)**0.5)
+
     # Atualização da tela
     pygame.display.flip()
+
+#print(f'Posição: ({posicao_x:.2f}, {height - posicao_y:.2f})')
+#print(f'Velocidade: ({velocidade_x:.2f}, {velocidade_y:.2f})')
+
+# Plotar a curva com diferentes pontos
+plt.plot(tempo, velocidades, marker='o', linestyle='-')
+plt.plot(tempo, velocidades_x, marker='o', linestyle='-')
+plt.plot(tempo, velocidades_y, marker='o', linestyle='-')
+
+# Personalizar o gráfico
+plt.legend(['Módulo', 'Horizontal', 'Vertical'])
+plt.title('Velocidades')
+plt.xlabel('Tempo (s)')
+plt.ylabel('Velocidade (m/s)')
+
+# Exibir o gráfico
+plt.show()
+
+sys.exit()
